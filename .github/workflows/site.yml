@@ -1,0 +1,119 @@
+name: Site
+
+# The four books, built from the four repositories and published as one
+# site: `/` is the engine's, `/remote/`, `/python/` and `/node/` are the
+# others'. One deployment, four directories — a reader who crosses between
+# them stays on the same host, and no book has to know where it is served
+# from beyond that.
+#
+# Nothing here is a source of truth: every page lives in the repository of
+# the code it documents, which is what keeps a chapter and the change it
+# describes in one pull request.
+on:
+  # A book change lands in one of the four repositories, so this cannot
+  # trigger on its own push alone.
+  #
+  # A `repository_dispatch` from each of them would publish within a
+  # minute, and needs a token with write access to this repository stored
+  # in all four — four more secrets to rotate. The schedule is the trade
+  # this project made instead: prose is not a deploy, and `workflow_dispatch`
+  # is one click when it matters.
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one half-published.
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: site
+
+      # Each book from its own repository, at whatever `main` says today.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config
+          path: engine
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-remote
+          path: remote
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-python
+          path: python
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-node
+          path: node
+
+      - name: install mdbook
+        # Digest-verified before anything is extracted: a binary whose
+        # output is published to Pages deserves the same suspicion the
+        # rest of these workflows give an action.
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL -o mdbook.tar.gz \
+            https://github.com/rust-lang/mdBook/releases/download/v0.4.52/mdbook-v0.4.52-x86_64-unknown-linux-gnu.tar.gz
+          echo "c0b903f01dd8f4edc644372ad2b80b1fdddd12552d37b6a098657cbd8eddd768  mdbook.tar.gz" | sha256sum -c -
+          tar -xzf mdbook.tar.gz -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Absolute destinations, and that is not a style choice: mdbook 0.4
+      # resolves a relative `--dest-dir` against the *book's* root, so
+      # `--dest-dir out/python` would write inside the book being built
+      # and the upload below would never see it. 0.5 resolves it against
+      # the working directory. An absolute path is the same thing to both.
+      - name: build the four books
+        run: |
+          set -euo pipefail
+          out="$GITHUB_WORKSPACE/out"
+
+          mdbook build engine/book --dest-dir "$out"
+          mdbook build remote/book --dest-dir "$out/remote"
+          mdbook build python/book --dest-dir "$out/python"
+          mdbook build node/book --dest-dir "$out/node"
+
+      # What is about to be published, checked before it is: a missing
+      # directory is not an error to anything upstream of here, and the
+      # failure it produces is a 404 on a site whose build was green.
+      - name: all four books are in the artefact
+        run: |
+          set -euo pipefail
+
+          for page in index.html remote/index.html python/index.html node/index.html; do
+            if [ ! -f "out/${page}" ]; then
+              echo "::error::out/${page} is missing; the deploy would 404"
+              exit 1
+            fi
+          done
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
