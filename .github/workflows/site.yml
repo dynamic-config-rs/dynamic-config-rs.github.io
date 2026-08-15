@@ -92,6 +92,43 @@ jobs:
           mdbook build python/book --dest-dir "$out/python"
           mdbook build node/book --dest-dir "$out/node"
 
+      # A sitemap and a robots.txt, written from what was actually built
+      # rather than from a list somebody maintains. mdBook produces
+      # neither, and a four-book site spread over four directories is
+      # exactly the shape a crawler does badly on without one.
+      - name: sitemap and robots
+        run: |
+          set -euo pipefail
+          site="https://dynamic-config-rs.github.io"
+          today=$(date -u +%Y-%m-%d)
+
+          {
+            echo '<?xml version="1.0" encoding="UTF-8"?>'
+            echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            # `print.html` is the whole book on one page: useful to a
+            # reader, duplicate content to a crawler.
+            find out -name '*.html' ! -name 'print.html' ! -name '404.html' \
+              | sed 's|^out||' | sort \
+              | while read -r page; do
+                  printf '  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n' \
+                    "$site" "$page" "$today"
+                done
+            echo '</urlset>'
+          } > out/sitemap.xml
+
+          cat > out/robots.txt <<ROBOTS
+          User-agent: *
+          Allow: /
+          Disallow: /print.html
+          Disallow: /remote/print.html
+          Disallow: /python/print.html
+          Disallow: /node/print.html
+
+          Sitemap: ${site}/sitemap.xml
+          ROBOTS
+
+          echo "sitemap: $(grep -c '<url>' out/sitemap.xml) pages"
+
       # What is about to be published, checked before it is: a missing
       # directory is not an error to anything upstream of here, and the
       # failure it produces is a 404 on a site whose build was green.
@@ -99,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          for page in index.html remote/index.html python/index.html node/index.html; do
+          for page in index.html remote/index.html python/index.html node/index.html sitemap.xml robots.txt; do
             if [ ! -f "out/${page}" ]; then
               echo "::error::out/${page} is missing; the deploy would 404"
               exit 1
