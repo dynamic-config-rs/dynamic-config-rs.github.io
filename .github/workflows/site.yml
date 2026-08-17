@@ -1,21 +1,21 @@
 name: Site
 
-# The four books, built from the four repositories and published as one
-# site: `/` is the engine's, `/remote/`, `/python/` and `/node/` are the
-# others'. One deployment, four directories — a reader who crosses between
-# them stays on the same host, and no book has to know where it is served
-# from beyond that.
+# The five books, built from the five repositories and published as one
+# site: `/` is the engine's, `/remote/`, `/python/`, `/node/` and `/web/`
+# are the others'. One deployment, five directories — a reader who crosses
+# between them stays on the same host, and no book has to know where it is
+# served from beyond that.
 #
 # Nothing here is a source of truth: every page lives in the repository of
 # the code it documents, which is what keeps a chapter and the change it
 # describes in one pull request.
 on:
-  # A book change lands in one of the four repositories, so this cannot
+  # A book change lands in one of the five repositories, so this cannot
   # trigger on its own push alone.
   #
   # A `repository_dispatch` from each of them would publish within a
   # minute, and needs a token with write access to this repository stored
-  # in all four — four more secrets to rotate. The schedule is the trade
+  # in all five — five more secrets to rotate. The schedule is the trade
   # this project made instead: prose is not a deploy, and `workflow_dispatch`
   # is one click when it matters.
   schedule:
@@ -46,7 +46,7 @@ jobs:
       # The default `GITHUB_TOKEN` can read a *public* repository and
       # nothing else: a private one answers `Not Found` at "Retrieving the
       # default branch name", which is what the first run of this workflow
-      # hit. All four are public, and that is a requirement rather than an
+      # hit. All five are public, and that is a requirement rather than an
       # accident — the site is built from them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -64,6 +64,10 @@ jobs:
         with:
           repository: dynamic-config-rs/dynamic-config-node
           path: node
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-python-web
+          path: web
 
       - name: install mdbook
         # Digest-verified before anything is extracted: a binary whose
@@ -82,7 +86,7 @@ jobs:
       # `--dest-dir out/python` would write inside the book being built
       # and the upload below would never see it. 0.5 resolves it against
       # the working directory. An absolute path is the same thing to both.
-      - name: build the four books
+      - name: build the five books
         run: |
           set -euo pipefail
           out="$GITHUB_WORKSPACE/out"
@@ -91,10 +95,11 @@ jobs:
           mdbook build remote/book --dest-dir "$out/remote"
           mdbook build python/book --dest-dir "$out/python"
           mdbook build node/book --dest-dir "$out/node"
+          mdbook build web/book --dest-dir "$out/web"
 
       # A sitemap and a robots.txt, written from what was actually built
       # rather than from a list somebody maintains. mdBook produces
-      # neither, and a four-book site spread over four directories is
+      # neither, and a five-book site spread over five directories is
       # exactly the shape a crawler does badly on without one.
       - name: sitemap and robots
         run: |
@@ -123,6 +128,7 @@ jobs:
           Disallow: /remote/print.html
           Disallow: /python/print.html
           Disallow: /node/print.html
+          Disallow: /web/print.html
 
           Sitemap: ${site}/sitemap.xml
           ROBOTS
@@ -132,11 +138,11 @@ jobs:
       # What is about to be published, checked before it is: a missing
       # directory is not an error to anything upstream of here, and the
       # failure it produces is a 404 on a site whose build was green.
-      - name: all four books are in the artefact
+      - name: all five books are in the artefact
         run: |
           set -euo pipefail
 
-          for page in index.html remote/index.html python/index.html node/index.html sitemap.xml robots.txt; do
+          for page in index.html remote/index.html python/index.html node/index.html web/index.html sitemap.xml robots.txt; do
             if [ ! -f "out/${page}" ]; then
               echo "::error::out/${page} is missing; the deploy would 404"
               exit 1
