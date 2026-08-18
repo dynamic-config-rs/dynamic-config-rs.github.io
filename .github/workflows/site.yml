@@ -68,6 +68,14 @@ jobs:
         with:
           repository: dynamic-config-rs/dynamic-config-python-web
           path: web
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-web
+          path: rust-web
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: dynamic-config-rs/dynamic-config-k8s
+          path: k8s
 
       - name: install mdbook
         # Digest-verified before anything is extracted: a binary whose
@@ -96,6 +104,8 @@ jobs:
           mdbook build python/book --dest-dir "$out/python"
           mdbook build node/book --dest-dir "$out/node"
           mdbook build web/book --dest-dir "$out/web"
+          mdbook build rust-web/book --dest-dir "$out/rust-web"
+          mdbook build k8s/book --dest-dir "$out/k8s"
 
       # A sitemap and a robots.txt, written from what was actually built
       # rather than from a list somebody maintains. mdBook produces
