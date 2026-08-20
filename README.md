@@ -1,6 +1,6 @@
 # dynamic-config-rs.github.io
 
-The organisation's site: five books, built from five repositories and
+The organisation's site: seven books, built from seven repositories and
 published together at <https://dynamic-config-rs.github.io/>.
 
 | Path | Book | Source |
@@ -10,6 +10,8 @@ published together at <https://dynamic-config-rs.github.io/>.
 | `/python/` | the Python wheels | [dynamic-config-python](https://github.com/dynamic-config-rs/dynamic-config-python) |
 | `/node/` | the npm packages | [dynamic-config-node](https://github.com/dynamic-config-rs/dynamic-config-node) |
 | `/web/` | the Python web-framework adapters | [dynamic-config-python-web](https://github.com/dynamic-config-rs/dynamic-config-python-web) |
+| `/rust-web/` | the Rust web crates: tower, axum, Actix, Loco | [dynamic-config-web](https://github.com/dynamic-config-rs/dynamic-config-web) |
+| `/k8s/` | the Kubernetes integration: webhook, agent, operator, chart | [dynamic-config-k8s](https://github.com/dynamic-config-rs/dynamic-config-k8s) |
 
 **No prose lives here.** Every page is in the repository of the code it
 documents, which is what keeps a chapter and the change it describes in
@@ -17,9 +19,9 @@ one pull request. This repository is the workflow that assembles them.
 
 ## Publishing
 
-`.github/workflows/site.yml` checks out the five repositories at `main`,
+`.github/workflows/site.yml` checks out the seven repositories at `main`,
 builds each book with a pinned, digest-verified mdBook, asserts that all
-five index pages exist — a missing directory is a 404 on a green build,
+seven index pages exist — a missing directory is a 404 on a green build,
 which is exactly the failure this project has already shipped once — and
 deploys the result to Pages.
 
@@ -31,7 +33,7 @@ gh workflow run site.yml --repo dynamic-config-rs/dynamic-config-rs.github.io
 
 A book change lands in another repository, so nothing here notices it
 immediately. Publishing within a minute instead would mean a token with
-write access to this repository stored in all five — five more secrets to
+write access to this repository stored in all seven — seven more secrets to
 rotate, for prose. The schedule is the trade this project made; the
 dispatch above is the answer when it matters.
 

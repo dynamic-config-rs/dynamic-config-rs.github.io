@@ -1,8 +1,8 @@
 name: Site
 
-# The five books, built from the five repositories and published as one
+# The seven books, built from the seven repositories and published as one
 # site: `/` is the engine's, `/remote/`, `/python/`, `/node/` and `/web/`
-# are the others'. One deployment, five directories — a reader who crosses
+# are the others'. One deployment, seven directories — a reader who crosses
 # between them stays on the same host, and no book has to know where it is
 # served from beyond that.
 #
@@ -10,12 +10,12 @@ name: Site
 # the code it documents, which is what keeps a chapter and the change it
 # describes in one pull request.
 on:
-  # A book change lands in one of the five repositories, so this cannot
+  # A book change lands in one of the seven repositories, so this cannot
   # trigger on its own push alone.
   #
   # A `repository_dispatch` from each of them would publish within a
   # minute, and needs a token with write access to this repository stored
-  # in all five — five more secrets to rotate. The schedule is the trade
+  # in all seven — seven more secrets to rotate. The schedule is the trade
   # this project made instead: prose is not a deploy, and `workflow_dispatch`
   # is one click when it matters.
   schedule:
@@ -46,7 +46,7 @@ jobs:
       # The default `GITHUB_TOKEN` can read a *public* repository and
       # nothing else: a private one answers `Not Found` at "Retrieving the
       # default branch name", which is what the first run of this workflow
-      # hit. All five are public, and that is a requirement rather than an
+      # hit. All seven are public, and that is a requirement rather than an
       # accident — the site is built from them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -94,7 +94,7 @@ jobs:
       # `--dest-dir out/python` would write inside the book being built
       # and the upload below would never see it. 0.5 resolves it against
       # the working directory. An absolute path is the same thing to both.
-      - name: build the five books
+      - name: build the seven books
         run: |
           set -euo pipefail
           out="$GITHUB_WORKSPACE/out"
@@ -109,7 +109,7 @@ jobs:
 
       # A sitemap and a robots.txt, written from what was actually built
       # rather than from a list somebody maintains. mdBook produces
-      # neither, and a five-book site spread over five directories is
+      # neither, and a seven-book site spread over seven directories is
       # exactly the shape a crawler does badly on without one.
       - name: sitemap and robots
         run: |
@@ -148,11 +148,11 @@ jobs:
       # What is about to be published, checked before it is: a missing
       # directory is not an error to anything upstream of here, and the
       # failure it produces is a 404 on a site whose build was green.
-      - name: all five books are in the artefact
+      - name: all seven books are in the artefact
         run: |
           set -euo pipefail
 
-          for page in index.html remote/index.html python/index.html node/index.html web/index.html sitemap.xml robots.txt; do
+          for page in index.html remote/index.html python/index.html node/index.html web/index.html rust-web/index.html k8s/index.html sitemap.xml robots.txt; do
             if [ ! -f "out/${page}" ]; then
               echo "::error::out/${page} is missing; the deploy would 404"
               exit 1
